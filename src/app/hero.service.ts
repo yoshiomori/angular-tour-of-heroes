@@ -1,5 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
+
+
 import { Hero } from './hero';
 import { MessageService } from './message.service';
 
@@ -19,15 +23,34 @@ const HEROES = [
   providedIn: 'root'
 })
 export class HeroService {
+  heroesUrl: string = '/api/heroes/';
+
   getHero(id: number): Observable<Hero> {
-    this._messageService.addMessage(`HeroService: fetched hero id=${id}`);
-    return of(HEROES.find(hero=>hero.id==id));
+    let url = `${this.heroesUrl}${id}/`;
+    return this._httpClient.get<Hero>(url).pipe(
+      tap(_=>this._log(`fetched hero id=${id}`)),
+      catchError(this._handleError)
+    );
   }
 
-  constructor(private _messageService: MessageService) { }
+  constructor(private _messageService: MessageService, private _httpClient: HttpClient) { }
 
   getHeroes(): Observable<Hero[]> {
-    this._messageService.addMessage("HeroService: fetched heroes");
-    return of(HEROES);
+    return this._httpClient.get<Hero[]>(this.heroesUrl).pipe(
+      tap(_=>this._log('fetched heroes')),
+      catchError(this._handleError)
+    );
+  }
+
+  private _log(message: string) {
+    this._messageService.addMessage(`HeroService: ${message}`);
+  }
+
+  private _handleError<T>(operation='operation', result?: T) {
+    return (error: { message: any; }):Observable<T>=>{
+      console.error(error);
+      this._log(`${operation} failed: ${error.message}`);
+      return of(result as T);
+    }
   }
 }
